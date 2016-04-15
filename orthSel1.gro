@@ -1,0 +1,391 @@
+///////////////////////////////////////////////////////////////
+//Selection of orthogonal pairs of triggerRNA-switch
+//trigger1 =>  sw1 <--> sw2  (trigger2 is not used)
+//
+// Ismael Rodríguez Palomo - LIA
+
+
+
+include gro;
+
+set("dt", 0.1);
+set("population_max", 2000000);
+
+// Control variables
+t := 0;
+i := 0;
+n_run := 0;
+n_runs := 10;
+
+//Number of bacteria types
+nP:=0;
+nC1C2:=0; nC1Y2:=0; nC1N2:=0; nC1T2:=0;
+nY1C2:=0; nY1Y2:=0; nY1N2:=0; nY1T2:=0;
+nN1C2:=0; nN1Y2:=0; nN1N2:=0; nN1T2:=0;
+nT1C2:=0; nT1Y2:=0; nT1N2:=0; nT1T2:=0;
+
+totalBac:=0:
+repFract:=0.5;
+
+set ("num_plasmids",18);
+set ("num_proteins",6);
+set ("num_riboswitchs",2);
+
+offCounter := 0;
+offTime := 240;
+onCounter := 0;
+onTime := 600;
+totalTime := offTime + onTime;
+selMode := 0; //0-->OFF || 1-->ON
+printCounter := 0;
+printTime := 5;
+
+proteins({"AT1", "Tox2", "Tox1", "AT2", "Tox3"});
+rnas({"T1"});
+plasmids({	"pP",
+			"B1C1", "B1Y1", "B1N1", "B1T1",
+			"B2C1", "B2Y1", "B2N1", "B2T1",
+			"pHe"});
+riboswitches ({	"sw1C1","sw1Y1","sw1N1","sw1T1",
+				"sw2C1","sw2Y1","sw2N1","sw2T1"});
+
+// Protein degradation times and variabilities
+protein_degradation ([	proteins      := {"AT1", "Tox2", "Tox1", "AT2", "Tox3"}, 
+						times         := {30.0,   60.0,   60.0,   30.0,  60.0},
+						variabilities := {3.0,    3.0,    3.0,    3.0,   3.0}]);
+						
+// RNA degradation times and variabilities
+rna_degradation ([	rnas := {"T1"}, 
+					times := {6.8},
+					variabilities := {2.0}]);
+
+// Operon definition
+genes([	name := "operonP1",
+		rnas := {"T1"},
+		promoter := [function := "YES", transcription_factors := {}, constitutive := true,
+		inductor_noise_probability := [output0input1 := 0.0, output1input0 := 0.0],
+		repressor_noise_probability := [output1input1 := 0.0, output0input0 := 0.0]],
+		//prot_act_times := [times := {10.0, 3.0, 4.5}, variabilities := {2.0, 1.0, 2.1}],
+		rna_act_times := [times := {2.0}, variabilities := {0.2}]]);
+
+// Operon definition
+genes([	name := "operonP2",
+		proteins := {"AT1","Tox2","CI"}, //CI: only for simulating NOT gate because actually not-riboswitches do not exist
+		//rnas := {""},
+		promoter := [function := "NOT", transcription_factors := {"tetR"}, constitutive := true, 
+		inductor_noise_probability := [output0input1 := 0.0, output1input0 := 0.0],
+		repressor_noise_probability := [output1input1 := 0.0, output0input0 := 0.0]],
+		prot_act_times := [times := {10.0, 10.0, 2.0}, variabilities := {2.0, 1.0}], //CI_activation_time = T1_activation_time
+		//rna_act_times := [times := {5.0, 1.0, 2.5}, variabilities := {0.5, 0.1, 0.3}]]);
+
+// Operon definition: B1C1
+genes([	name := "operonB1C1",
+		proteins := {"Tox1","AT2"},
+		promoter := [function := "YES", transcription_factors := {}, constitutive := true,
+		inductor_noise_probability := [output0input1 := 0.0, output1input0 := 0.0],
+		repressor_noise_probability := [output1input1 := 0.0, output0input0 := 0.0]],
+		riboswitches := {{"sw1C1","Tox1"}, {"sw1C1","AT2"}},
+		prot_act_times := [times := {10.0, 10.0}, variabilities := {2.0, 1.0}],
+		//rna_act_times := [times := {5.0, 1.0, 2.5}, variabilities := {0.5, 0.1, 0.3}]]);
+
+// Operon definition: B1Y1
+genes([	name := "operonB1Y1",
+		proteins := {"Tox1","AT2"},
+		promoter := [function := "YES", transcription_factors := {}, constitutive := true,
+		inductor_noise_probability := [output0input1 := 0.0, output1input0 := 0.0],
+		repressor_noise_probability := [output1input1 := 0.0, output0input0 := 0.0]],
+		riboswitches := {{"sw1Y1","Tox1"}, {"sw1Y1","AT2"}},
+		prot_act_times := [times := {10.0, 10.0}, variabilities := {2.0, 1.0}],
+		//rna_act_times := [times := {5.0, 1.0, 2.5}, variabilities := {0.5, 0.1, 0.3}]]);
+
+// Operon definition: B1N1
+genes([	name := "operonB1N1",
+		proteins := {"Tox1","AT2"},
+		promoter := [function := "NOT", transcription_factors := {"CI"}, constitutive := true, //Repressed by CI to simulate a not gate
+		inductor_noise_probability := [output0input1 := 0.0, output1input0 := 0.0],
+		repressor_noise_probability := [output1input1 := 0.0, output0input0 := 0.0]],
+		//riboswitches := {{"sw1N1","Tox1"}, {"sw1N1","AT2"}},
+		prot_act_times := [times := {10.0, 10.0}, variabilities := {2.0, 1.0}],
+		//rna_act_times := [times := {5.0, 1.0, 2.5}, variabilities := {0.5, 0.1, 0.3}]]);
+
+// Operon definition: B1T1
+genes([	name := "operonB1T1",
+		proteins := {"Tox1","AT2"},
+		promoter := [function := "YES", transcription_factors := {}, constitutive := true,
+		inductor_noise_probability := [output0input1 := 0.0, output1input0 := 0.0],
+		repressor_noise_probability := [output1input1 := 0.0, output0input0 := 0.0]],
+		//riboswitches := {{"sw1T1","Tox1"}, {"sw1T1","AT2"}},  //Tautology gate does not have switches
+		prot_act_times := [times := {10.0, 10.0}, variabilities := {2.0, 1.0}], 
+		//rna_act_times := [times := {5.0, 1.0, 2.5}, variabilities := {0.5, 0.1, 0.3}]]);
+
+// Operon definition: B2C1
+genes([	name := "operonB2C1",
+		proteins := {"Tox3","AT2"},
+		//rnas := {""},
+		promoter := [function := "YES", transcription_factors := {}, constitutive := true,
+		inductor_noise_probability := [output0input1 := 0.0, output1input0 := 0.0],
+		repressor_noise_probability := [output1input1 := 0.0, output0input0 := 0.0]],
+		riboswitches := {{"sw2C1","Tox3"}, {"sw2C1","AT2"}},
+		prot_act_times := [times := {10.0, 10.0}, variabilities := {2.0, 1.0}],
+		//rna_act_times := [times := {5.0, 1.0, 2.5}, variabilities := {0.5, 0.1, 0.3}]]);
+
+// Operon definition: B2Y1
+genes([	name := "operonB2Y1",
+		proteins := {"Tox3","AT2"},
+		//rnas := {""},
+		promoter := [function := "YES", transcription_factors := {}, constitutive := true,
+		inductor_noise_probability := [output0input1 := 0.0, output1input0 := 0.0],
+		repressor_noise_probability := [output1input1 := 0.0, output0input0 := 0.0]],
+		riboswitches := {{"sw2Y1","Tox3"}, {"sw2Y1","AT2"}},
+		prot_act_times := [times := {10.0, 10.0}, variabilities := {2.0, 1.0}],
+		//rna_act_times := [times := {5.0, 1.0, 2.5}, variabilities := {0.5, 0.1, 0.3}]]);
+
+// Operon definition: B2N1
+genes([	name := "operonB2N1",
+		proteins := {"Tox3","AT2"},
+		//rnas := {""},
+		promoter := [function := "NOT", transcription_factors := {"CI"}, constitutive := true, //Repressed by CI to simulate a not gate
+		inductor_noise_probability := [output0input1 := 0.0, output1input0 := 0.0],
+		repressor_noise_probability := [output1input1 := 0.0, output0input0 := 0.0]],
+		//riboswitches := {{"sw2N1","Tox3"}, {"sw2N1","AT2"}},
+		prot_act_times := [times := {10.0, 10.0}, variabilities := {2.0, 1.0}],
+		//rna_act_times := [times := {5.0, 1.0, 2.5}, variabilities := {0.5, 0.1, 0.3}]]);
+
+// Operon definition: B2T1
+genes([	name := "operonB2T1",
+		proteins := {"Tox3","AT2"},
+		//rnas := {""},
+		promoter := [function := "YES", transcription_factors := {}, constitutive := true,
+		inductor_noise_probability := [output0input1 := 0.0, output1input0 := 0.0],
+		repressor_noise_probability := [output1input1 := 0.0, output0input0 := 0.0]],
+		//riboswitches := {{"sw2T1","Tox3"}, {"sw2T1","AT2"}}, //Tautology Gate does not have switches
+		prot_act_times := [times := {10.0, 10.0}, variabilities := {2.0, 1.0}],
+		//rna_act_times := [times := {5.0, 1.0, 2.5}, variabilities := {0.5, 0.1, 0.3}]]);
+
+// Operon definition: HELPER
+genes([	name := "operonH",
+		proteins := {"tetR"},
+		//rnas := {""},
+		promoter := [function := "YES", transcription_factors := {}, constitutive := true,
+		inductor_noise_probability := [output0input1 := 0.0, output1input0 := 0.0],
+		repressor_noise_probability := [output1input1 := 0.0, output0input0 := 0.0]],
+		prot_act_times := [times := {5.0}, variabilities := {1.0}],
+		//rna_act_times := [times := {5.0, 1.0, 2.5}, variabilities := {0.5, 0.1, 0.3}]]);
+
+// Plasmid inclusion matrix (of operons)
+plasmids_genes ([pP1  := {"operonP1","operonP2"},
+				 B1C1 := {"operonB1C1"},
+				 B1Y1 := {"operonB1Y1"}
+				 B1N1 := {"operonB1N1"}
+				 B1T1 := {"operonB1T1"}
+				 B2C1 := {"operonB2C1"}
+				 B2Y1 := {"operonB2Y1"}
+				 B2N1 := {"operonB2N1"}
+				 B2T1 := {"operonB2T1"}
+				 pHe  := {"operonH"}]);
+
+// RNAs that open riboswitches matrix 
+RNAs_riboswitches ([T1 := {"sw1Y1"},
+					T1 := {"sw2Y1"}]);
+					//T1 will not open Contradiction switches
+
+//ACTIONS
+action({"tetR"},"conjugate",{"1","1.0"});//Plasmid nr. / conjugation rate
+action({"T1"},"conjugate",{"1","1.0"})
+action({"Tox1","-AT1"},"die",{"0.0167"});
+action({"Tox2","-AT2"},"die",{"0.0167"});
+action({"Tox3"},"die",{"0.0167"});
+action({"Tox1","AT1"},"die",{0.0});
+action({"Tox2","AT2"},"die",{0.0});
+
+//action({"gfp"},"paint",{"500","0","0","0"}); //Express “colour” with a fixed saturation. 
+//action({"-gfp"},"d_paint",{"-1","0","0","0"});//Express “colour” gradually. Code: {G,R,Y,B}
+//action({"-ara","tetR"},"lose_plasmid",{"1"});//Plasmid nr.
+//action({"gfp"},"set_growth_rate",{"0.011"});//ln(2)/gt(min)[ft/min]
+//action({"-tetR","-ara"},"emit_cf",{tostring(cf1)});//Cross-feeding emission tag
+//action({"tetR"},"get_cf",{tostring(cf1),"1"}); //Cross-feeding reception tag/1. good, 2. toxin 
+
+
+//PROGRAMS//
+
+program P() :={
+	just_divided:{
+		nP:=nP+1;
+	}
+}
+
+program C1C2() :={
+	just_divided:{
+		nC1C2:=nC1C2+1;
+	}
+}
+program C1Y2() :={
+	just_divided:{
+		nC1Y2:=nC1Y2+1;
+	}
+}
+program C1N2() :={
+	just_divided:{
+		nC1N2:=nC1N2+1;
+	}
+}
+program C1T2() :={
+	just_divided:{
+		nC1T2:=nC1T2+1;
+	}
+}
+
+program Y1C2() :={
+	just_divided:{
+		nY1C2:=nY1C2+1;
+	}
+}
+program Y1Y2() :={
+	just_divided:{
+		nY1Y2:=nY1Y2+1;
+	}
+}
+program Y1N2() :={
+	just_divided:{
+		nY1N2:=nY1N2+1;
+	}
+}
+program Y1T2() :={
+	just_divided:{
+		nY1T2:=nY1T2+1;
+	}
+}
+
+program N1C2() :={
+	just_divided:{
+		nN1C2:=nN1C2+1;
+	}
+}
+program N1Y2() :={
+	just_divided:{
+		nC1Y2:=nN1Y2+1;
+	}
+}
+program N1N2() :={
+	just_divided:{
+		nN1N2:=nN1N2+1;
+	}
+}
+program N1T2() :={
+	just_divided:{
+		nN1T2:=nN1T2+1;
+	}
+}
+program T1C2() :={
+	just_divided:{
+		nT1C2:=nT1C2+1;
+	}
+}
+program T1Y2() :={
+	just_divided:{
+		nT1Y2:=nT1Y2+1;
+	}
+}
+program T1N2() :={
+	just_divided:{
+		nT1N2:=nT1N2+1;
+	}
+}
+program T1T2() :={
+	just_divided:{
+		nT1T2:=nT1T2+1;
+	}
+}
+
+program main() :={
+	t = 0:{
+		fprint(fp, "Time\n");
+	}
+	
+	true:{
+		t := t + dt;
+		printCounter := printCounter + dt;
+		totalBac := nC1C2 + nC1Y2 + nC1N2 + nC1T2 + nY1C2 + nY1Y2 + nY1N2 + nY1T2 + nN1C2 + nN1Y2 + nN1N2 + nN1T2 + nT1C2 + nT1Y2 + nT1N2 + nT1T2;
+	}
+	
+	printCounter >=10 :{
+		printCounter := 0;
+		//Print to file and screen
+	}
+	
+	selMode = 0 :{
+		offCounter := offCounter+1;
+	}
+	selMode = 1 :{
+		onCounter := onCounter+ dt;
+	}
+	
+	t > totalTime & n_run >= n_runs:{
+		stop();
+	}
+	
+	t >= offTime:{
+		selMode := 1; //Switch to ON selection
+		replate(repFract); //Replate a sample from offSelection
+		c_ecolis(totalBac*repFract, -50, -70, 100, {"pP1", "pHe"}, {"tetR"}, program p()); //P donor bacteria in 1:1 prop
+	}
+	
+	t > totalTime & n_run < n_runs:{
+		reset();
+		reset_actions();
+		t := 0;
+		i := 0;
+		n_run := n_run + 1;
+		set ( "dt", 0.1 );
+		set ( "population_max", 2000000 );
+		// Add all parameters here, it's a complete reset.
+		nP:=0;
+		nC1C2:=0; nC1Y2:=0; nC1N2:=0; nC1T2:=0;
+		nY1C2:=0; nY1Y2:=0; nY1N2:=0; nY1T2:=0;
+		nN1C2:=0; nN1Y2:=0; nN1N2:=0; nN1T2:=0;
+		nT1C2:=0; nT1Y2:=0; nT1N2:=0; nT1T2:=0;
+		totalBac:=0:
+		offCounter := 0;
+		onCounter := 0;
+		selMode := 0; //0-->OFF || 1-->ON
+		printCounter := 0;
+		printTime := 5;
+		
+		fp := fopen ( route1 <> filename1 <> tostring(n_run) <> ".csv", "w" );
+		
+		// E Coli creation. Parameters: [Location, angle, volume], {plasmids included}, {protein initial state}, {rna initial state}, program to run				 
+		//ecoli([y := 20, x := 50],{"p1"},{},{},program p());
+
+		// E Coli mass creation. Parameters: number of E Coli to create, x (center of cluster), y (center of cluster), maximum radius of cluster, {plasmids included}, {protein initial state}, {rna initial state}, program to run 
+		//							    Plasmids		    Bac program
+		c_ecolis(100, -50, -70, 100, {"B1C1", "B2C1"}, {}, program C1C2()); //C1C2 bacteria
+		c_ecolis(100, -50, -70, 100, {"B1C1", "B2Y1"}, {}, program C1C2()); //C1Y2 bacteria
+		c_ecolis(100, -50, -70, 100, {"B1C1", "B2N1"}, {}, program C1C2()); //C1N2 bacteria
+		c_ecolis(100, -50, -70, 100, {"B1C1", "B2T1"}, {}, program C1C2()); //C1T2 bacteria
+		c_ecolis(100, -50, -70, 100, {"B1Y1", "B2C1"}, {}, program C1C2()); //Y1C2 bacteria
+		c_ecolis(100, -50, -70, 100, {"B1Y1", "B2Y1"}, {}, program C1C2()); //Y1Y2 bacteria
+		c_ecolis(100, -50, -70, 100, {"B1Y1", "B2N1"}, {}, program C1C2()); //Y1N2 bacteria
+		c_ecolis(100, -50, -70, 100, {"B1Y1", "B2T1"}, {}, program C1C2()); //Y1T2 bacteria
+		c_ecolis(100, -50, -70, 100, {"B1N1", "B2C1"}, {}, program C1C2()); //N1C2 bacteria
+		c_ecolis(100, -50, -70, 100, {"B1N1", "B2Y1"}, {}, program C1C2()); //N1Y2 bacteria
+		c_ecolis(100, -50, -70, 100, {"B1N1", "B2N1"}, {}, program C1C2()); //N1N2 bacteria
+		c_ecolis(100, -50, -70, 100, {"B1N1", "B2T1"}, {}, program C1C2()); //N1T2 bacteria
+		c_ecolis(100, -50, -70, 100, {"B1T1", "B2C1"}, {}, program C1C2()); //T1C2 bacteria
+		c_ecolis(100, -50, -70, 100, {"B1T1", "B2Y1"}, {}, program C1C2()); //T1Y2 bacteria
+		c_ecolis(100, -50, -70, 100, {"B1T1", "B2N1"}, {}, program C1C2()); //T1N2 bacteria
+		c_ecolis(100, -50, -70, 100, {"B1T1", "B2T1"}, {}, program C1C2()); //T1T2 bacteria	
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+

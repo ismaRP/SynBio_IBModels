@@ -1,0 +1,202 @@
+include gro
+
+fp := fopen ( "C:\Users\Ismael\Desktop\SYN_BIO\GRO\selection.csv", "w" );
+fprint (fp, "Yes, Not, Taut, Cont\n");
+
+fun exp x . 1 + x + x^2/2 + x^3/6 + x^4/24;
+fun exp_inverse x. 1.0 / exp(x);
+fun abs x. if x < 0 then (- x) else x end;
+Pi := 3.14159;
+
+//srand(-5);
+
+M13_Diffusion :=  4.0 ; //[um^2/dt] ; 0.00808 (calculated value) 
+M13_Degradation := 0.01; //
+M13_Concentration := 0.1; //# phages updated per timestep for 100 phages/hour release ; 0.17189219 (calculated value) 
+M_13_Elimination_Rate := 0.000051344 * 1.8 ; // [dt^-1] ; approx. (M13 has 4.5 hour plasma half-life) 
+EclipseTimeRange := rand(101.0)/100.0 + 4.5; //approx. time needed for enough M13 phages to be generated within cell for progeny release /* rand(101.0)/100.0 + 4.5 */
+SearchTimeRange := rand(101.0) / 100.0 + 4.0; //approx time needed for phages to detect and infect bacteria /* rand(101.0) / 100.0 + 4.0 */
+
+M13 := signal(M13_Diffusion, M13_Degradation);
+
+num_cells := 17.0;
+infected_cells := 0.0;
+healthy_cells := num_cells - infected_cells;
+num_phages := 0.0;
+MOI := 0.0;
+probablity_infected := 0.0;
+
+
+nYes := 0;
+nNot := 0;
+nTaut := 0;
+nCont := 0;
+
+killing_rate := 0.0167;
+set ("population_max", 8500);
+set ( "dt", 0.05 );
+set ("growth_rate", 0.023);
+
+n := 0;
+
+program Bc() := {
+	
+	r := [infected:=0, prob_die:=0];
+	
+	rfp:=0;
+	
+	just_divided : {
+		nCont := nCont + 1;
+	}
+	
+	true : {
+		rfp := 1000;
+	}
+	
+	get_signal(M13) > 0.05 & r.infected = 0 :{
+		r.infected := 1;
+	}
+	
+	r.infected = 1 : {
+		r.prob_die := killing_rate;
+		emit_signal(M13, M13_Concentration);
+	}
+	
+	r.infected = 0 : {
+		skip();
+	}
+	
+	rate (r.prob_die) :{
+		die();
+	}
+	
+};
+
+program Bn() := {
+	
+	r := [infected:=0, prob_die:=0];
+	
+	yfp:=0;
+	
+	just_divided : {
+		nNot := nCont + 1;
+	}
+	
+	true : {
+		yfp := 1000;
+	}
+	
+	get_signal (M13) > 0.5 & r.infected = 0 : {
+		r.infected := 1;
+	}
+	
+	r.infected = 1 : {
+		r.prob_die := killing_rate;
+		emit_signal(M13, M13_Concentration);
+	}
+	
+	r.infected = 0 : {
+		r.prob_die := killing_rate;
+	}
+	
+	rate (r.prob_die) :{
+		die();
+	}
+	
+};
+
+program Bt() := {
+	r := [infected := 0, prob_die := 0];
+	
+	cfp:=0;
+	
+	just_divided : {
+		nTaut := nCont + 1;
+	}
+	
+	true : {
+		cfp := 1000;
+	}
+	
+	get_signal (M13) > 0.5 & r.infected = 0 : {
+		r.infected := 1;
+	}
+	
+	r.infected = 1 : {
+		r.prob_die :=0 ;
+		emit_signal(M13, M13_Concentration);
+	}
+	
+	r.infected = 0 : {
+		r.prob_die := killing_rate;
+	}
+	
+	rate (r.prob_die) :{
+		die();
+	}
+};
+
+program By() := {
+	r := [infected := 0, prob_die := 0];
+	
+	gfp:=0;
+	
+	just_divided : {
+		nYes := nCont + 1;
+	}
+	
+	true : {
+		gfp := 1000;
+	}
+	
+	get_signal (M13) > 0.5 & r.infected = 0 : {
+		r.infected := 1;
+	}
+	
+	r.infected = 1 : {
+		r.prob_die := 0;
+		emit_signal(M13, M13_Concentration);
+	}
+	
+	r.infected = 0 : {
+		r.prob_die := 0;
+	}
+	
+};
+
+program main() := {
+	input_time := 80;
+	input_counter := 0;
+	mode := 0;
+	
+	input_counter < input_time & mode = 0 : {
+		input_counter := input_counter + dt;
+	};
+	
+	//When time reaches a given time, initialize signals
+	input_counter > input_time & mode = 0 : {
+		foreach i in range 60 do {
+			set_signal(M13, rand(800)-400, rand(800)-400, 10)
+		} end;
+		input_counter:=0;
+		mode:=1;
+	}
+	
+	true : {
+		fprint (fp, ", ", nYes, ", ", nNot, ", ", nTaut, ", ", nCont, ", ", "\n");
+	}
+	
+};
+//Initialize each type of bacteria
+foreach i in range 100 do {
+	ecoli ( [x:=rand(400)-200, y:=rand(400)-200], program Bn() )
+} end;
+foreach i in range 100 do {
+	ecoli ( [x:=rand(400)-200, y:=rand(400)-200], program Bt() )
+} end;
+foreach i in range 100 do {
+	ecoli ( [x:=rand(400)-200, y:=rand(400)-200], program By() )
+} end;
+foreach i in range 100 do {
+	ecoli ( [x:=rand(400)-200, y:=rand(400)-200], program Bc() )
+} end;
