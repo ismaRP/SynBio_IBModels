@@ -1,7 +1,7 @@
 include gro
 
 fp := fopen ( "C:\Users\Ismael\Desktop\SYN_BIO\GRO\co-selection.csv", "w" );
-fprint (fp, "Yes, Not, Taut, Cont\n");
+fprint (fp, "nCont, nContA, nContN, nNot, nNotA, nNotN, nTaut, nTautA, nTautN, nYes, nYesA, nYesN\n");
 
 fun exp x . 1 + x + x^2/2 + x^3/6 + x^4/24;
 fun exp_inverse x. 1.0 / exp(x);
@@ -26,15 +26,16 @@ num_phages := 0.0;
 MOI := 0.0;
 probablity_infected := 0.0;
 
-nYes  := 100; nYesA  := 0; nYesN  := 0;
+nCont := 100; nContA := 0; nContN := 0;
 nNot  := 100; nNotA  := 0; nNotN  := 0;
 nTaut := 100; nTautA := 0; nTautN := 0;
-nCont := 100; nContA := 0; nContN := 0;
+nYes  := 100; nYesA  := 0; nYesN  := 0;
 
+g_rate := 0.023;
 killing_rate := 0.0167;
 set ("population_max", 8500);
 set ( "dt", 0.05 );
-set ("growth_rate", 0.023);
+set ("growth_rate", g_rate);
 n := 0;
 
 program Bc() := {
@@ -47,14 +48,30 @@ program Bc() := {
 	get_signal(M13_A) > 0.05 & r.infected_A = 0 & r.infected_N = 0 :{
 		r.infected_A := 1;
 		absorb_signal(M13_A, get_signal(M13_A));
+		nCont  := nCont  - 1;
+		nContA := nContA + 1;
 	}
 	
-	get_signal (M13_N) > 0.05 & r.infected_N = 0 & r.infected_A = 0 :{
+	get_signal(M13_N) > 0.05 & r.infected_N = 0 & r.infected_A = 0 :{
 		r.infected_N := 1;
 		absorb_signal(M13_N, get_signal(M13_N));
+		nCont  := nCont  - 1;
+		nContN := nContN + 1;
 	}
 	
-	r.infected_A = 0 & r.infected_N = 0 : {
+	just_divided & r.infected_A = 0 & r.infected_N = 0 :{
+		nCont := nCont + 1;
+	}
+	
+	just_divided & r.infected_A = 1 & r.infected_N = 0 :{
+		nContA := nContA + 1;
+	}
+	
+	just_divided & r.infected_A = 0 & r.infected_N = 1:{
+		nContN := nContN + 1;
+	}
+	
+	r.infected_A = 0 & r.infected_N = 0 :{
 		r.prob_die := 0;
 	}
 	
@@ -68,8 +85,19 @@ program Bc() := {
 		emit_signal(M13_N, M13_Concentration);
 	}
 	
-	rate (r.prob_die) :{
+	rate (r.prob_die) & r.infected_A = 0 & r.infected_N = 0 :{
 		die();
+		nCont := nCont - 1;
+	}
+	
+	rate (r.prob_die) & r.infected_A = 1 & r.infected_N = 0 :{
+		die();
+		nContA := nContA - 1;
+	}
+	
+	rate (r.prob_die) & r.infected_A = 1 & r.infected_N = 0 :{
+		die();
+		nContN := nContN - 1;
 	}
 	
 };
@@ -84,11 +112,27 @@ program Bn() := {
 	get_signal (M13_A) > 0.5 & r.infected_A = 0 & r.infected_N = 0 : {
 		r.infected_A := 1;
 		absorb_signal(M13_A, get_signal(M13_A));
+		nNot  := nNot  - 1;
+		nNotA := nNotA + 1; 
 	}
 	
 	get_signal (M13_N) > 0.5 & r.infected_N = 0 & r.infected_N = 0 :{
 		r.infected_N := 1;
 		absorb_signal(M13_N, get_signal(M13_N));
+		nNot  := nNot  - 1;
+		nNotN := nNotN + 1; 
+	}
+	
+	just_divided & r.infected_A = 0 & r.infected_N = 0 :{
+		nNot := nNot + 1;
+	}
+	
+	just_divided & r.infected_A = 1 & r.infected_N = 0 :{
+		nNotA := nNotA + 1;
+	}
+	
+	just_divided & r.infected_A = 0 & r.infected_N = 1 :{
+		nNotN := nNotN + 1;
 	}
 	
 	r.infected_A = 0 & r.infected_N = 0 : {
@@ -105,8 +149,19 @@ program Bn() := {
 		emit_signal(M13_N, M13_Concentration);
 	}
 	
-	rate (r.prob_die) :{
+	rate (r.prob_die) & r.infected_A = 0 & r.infected_N = 0 :{
 		die();
+		nNot := nNot - 1;
+	}
+	
+	rate (r.prob_die) & r.infected_A = 1 & r.infected_N = 0 :{
+		die();
+		nNotA := nNotA - 1;
+	}
+	
+	rate (r.prob_die) & r.infected_A = 0 & r.infected_N = 1 :{
+		die();
+		nNotN := nNotN - 1;
 	}
 	
 };
@@ -121,11 +176,27 @@ program Bt() := {
 	get_signal (M13_A) > 0.5 & r.infected_A = 0 & r.infected_N = 0 : {
 		r.infected_A := 1;
 		absorb_signal(M13_A, get_signal(M13_A));
+		nTaut  := nTaut  - 1;
+		nTautA := nTautA + 1;
 	}
 	
 	get_signal (M13_N) > 0.5 & r.infected_N = 0 & r.infected_N = 0 :{
 		r.infected_N := 1;
-		absorb_signal(M13_N, get_signal(M13_N));		
+		absorb_signal(M13_N, get_signal(M13_N));
+		nTaut  := nTaut  - 1;
+		nTautN := nTautN + 1;
+	}
+	
+	just_divided & r.infected_A = 0 & r.infected_N = 0 :{
+		nTaut := nTaut + 1;
+	}
+	
+	just_divided & r.infected_A = 1 & r.infected_N = 0 :{
+		nTautA := nTautA + 1;
+	}
+	
+	just_divided & r.infected_A = 0 & r.infected_N = 1 :{
+		nTautN := nTautN + 1;
 	}
 	
 	r.infected_A = 0 & r.infected_N = 1 : {
@@ -142,8 +213,19 @@ program Bt() := {
 		r.prob_die := killing_rate; //probability of dying --> Toxin strength
 	}
 	
-	rate (r.prob_die) :{
+	rate (r.prob_die) & r.infeced_A = 0 & r.infected_N = 0 :{
 		die();
+		nTaut := nTaut - 1;
+	}
+	
+	rate (r.prob_die) & r.infeced_A = 1 & r.infected_N = 0 :{
+		die();
+		nTautA := nTautA - 1;
+	}
+	
+	rate (r.prob_die) & r.infeced_A = 0 & r.infected_N = 1 :{
+		die();
+		nTautN := nTautN - 1;
 	}
 };
 
@@ -157,11 +239,27 @@ program By() := {
 	get_signal (M13_A) > 0.5 & r.infected_A = 0 & r.infected_N = 0 : {
 		r.infected_A := 1;
 		absorb_signal(M13_A, get_signal(M13_A));
+		nYes  := nYes  - 1;
+		nYesA := nYesA + 1;
 	}
 	
 	get_signal (M13_N) > 0.5 & r.infected_N = 0 & r.infected_A = 0 :{
 		r.infected_N := 1;
 		absorb_signal(M13_N, get_signal(M13_N));
+		nYes  := nYes  - 1;
+		nYesN := nYesN + 1;
+	}
+	
+	just_divided & r.infected_A = 0 & r.infected_N = 0 :{
+		nYes := nYes + 1;
+	}
+	
+	just_divided & r.infected_A = 1 & r.infected_N = 0 :{
+		nYesA := nYesA + 1;
+	}
+	
+	just_divided & r.infected_A = 0 & r.infected_N = 1:{
+		nYesN := nYesN + 1;
 	}
 	
 	r.infected_A = 0 & r.infected_N = 1 : {
@@ -178,8 +276,19 @@ program By() := {
 		r.prob_die := 0;
 	}
 	
-	rate (r.prob_die) :{
+	rate (r.prob_die) & r.infected_A = 0 & r.infected_N = 0 :{
 		die();
+		nYes := nYes - 1;
+	}
+	
+	rate (r.prob_die) & r.infected_A = 1 & r.infected_N = 0 :{
+		die();
+		nYesA := nYesA - 1;
+	}
+	
+	rate (r.prob_die) & r.infected_A = 1 & r.infected_N = 0 :{
+		die();
+		nYesN := nYesN - 1;
 	}
 };
 
@@ -187,6 +296,8 @@ program main() := {
 	input_time := 80;
 	input_counter := 0;
 	mode := 0;
+	print_time := 5;
+	print_counter := 0;
 	
 	input_counter < input_time & mode = 0 : {
 		input_counter := input_counter + dt;
@@ -202,6 +313,15 @@ program main() := {
 		};
 		input_counter:=0;
 		mode:=1;
+	}
+	
+	print_counter < print_time :{
+		print_counter := print_counter + dt;
+	}
+	
+	print_counter >= print_time :{
+	 print_counter := 0;
+	 fprint (fp, nCont, ", ", nContA, ", ", nContN, ", ", nNot, ", ", nNotA, ", ", nNotN, ", ", nTaut, ", ", nTautA, ", ", nTautN, ", ", nYes, ", ", nYesA, ", ", nYesN, "\n")
 	}
 };
 

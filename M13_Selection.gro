@@ -1,6 +1,6 @@
 include gro
 
-fp := fopen ( "C:\Users\Ismael\Desktop\SYN_BIO\GRO\selection.csv", "w" );
+fp := fopen ( "C:\Users\Ismael\Desktop\SYN_BIO\GRO\selectionData.csv", "w" );
 fprint (fp, "Yes, Not, Taut, Cont\n");
 
 fun exp x . 1 + x + x^2/2 + x^3/6 + x^4/24;
@@ -18,6 +18,7 @@ SearchTimeRange := rand(101.0) / 100.0 + 4.0; //approx time needed for phages to
 
 M13 := signal(M13_Diffusion, M13_Degradation);
 
+t := 0; //Global time variable
 
 num_cells := 17.0;
 infected_cells := 0.0;
@@ -171,6 +172,12 @@ program main() := {
 	input_time := 80;
 	input_counter := 0;
 	mode := 0;
+	print_time := 5;
+	print_counter := 0;
+	
+	true :{
+		t := t + dt;
+	}
 	
 	input_counter < input_time & mode = 0 : {
 		input_counter := input_counter + dt;
@@ -185,8 +192,13 @@ program main() := {
 		mode:=1;
 	}
 	
-	true : {
-		fprint (fp, ", ", nYes, ", ", nNot, ", ", nTaut, ", ", nCont, ", ", "\n");
+	print_counter < print_time :{
+		print_counter := print_counter + dt;
+	}
+	
+	print_counter >= print_time :{
+		print_counter := 0;
+		fprint (fp, ", ", nYes, ", ", nNot, ", ", nTaut, ", ", nCont, "\n");
 	}
 	
 };
