@@ -1,14 +1,13 @@
 include gro
 
-//fp := fopen ( "C:\Users\Ismael\Desktop\SYN_BIO\GRO\M13param.csv", "w" );
-//fprint (fp, "num_cells, healthy_cells, infected_cells, floor(num_phages), globalTime, MOI, probablity_infected\n");
+fp := fopen ( "C:\Users\Ismael\Desktop\SYN_BIO\GRO\co-selection.csv", "w" );
+fprint (fp, "Yes, Not, Taut, Cont\n");
 
 fun exp x . 1 + x + x^2/2 + x^3/6 + x^4/24;
 fun exp_inverse x. 1.0 / exp(x);
 fun abs x. if x < 0 then (- x) else x end;
 Pi := 3.14159;
 
-//srand(-5);
 
 M13_Diffusion :=  4.0 ; //[um^2/dt] ; 0.00808 (calculated value) 
 M13_Degradation := 0.01; //
@@ -27,8 +26,15 @@ num_phages := 0.0;
 MOI := 0.0;
 probablity_infected := 0.0;
 
-set ("population_max", 8500);
+nYes  := 100; nYesA  := 0; nYesN  := 0;
+nNot  := 100; nNotA  := 0; nNotN  := 0;
+nTaut := 100; nTautA := 0; nTautN := 0;
+nCont := 100; nContA := 0; nContN := 0;
 
+killing_rate := 0.0167;
+set ("population_max", 8500);
+set ( "dt", 0.05 );
+set ("growth_rate", 0.023);
 n := 0;
 
 program Bc() := {
@@ -40,19 +46,25 @@ program Bc() := {
 	
 	get_signal(M13_A) > 0.05 & r.infected_A = 0 & r.infected_N = 0 :{
 		r.infected_A := 1;
+		absorb_signal(M13_A, get_signal(M13_A));
 	}
 	
 	get_signal (M13_N) > 0.05 & r.infected_N = 0 & r.infected_A = 0 :{
 		r.infected_N := 1;
+		absorb_signal(M13_N, get_signal(M13_N));
 	}
 	
-	r.infected_A = 1 | r.infected_N = 0 : {
-		r.prob_die := rand(1); //probability of dying --> Toxin strength
+	r.infected_A = 0 & r.infected_N = 0 : {
+		r.prob_die := 0;
+	}
+	
+	r.infected_A = 1 & r.infected_N = 0 : {
+		r.prob_die := killing_rate; //probability of dying --> Toxin strength
 		emit_signal(M13_A, M13_Concentration);
 	}
 	
-	r.infected_A = 0 | r.infected_N = 1 : {
-		r.prob_die := rand(1); //probability of dying --> Toxin strength
+	r.infected_A = 0 & r.infected_N = 1 : {
+		r.prob_die := 0; //probability of dying --> Toxin strength
 		emit_signal(M13_N, M13_Concentration);
 	}
 	
@@ -71,24 +83,26 @@ program Bn() := {
 	
 	get_signal (M13_A) > 0.5 & r.infected_A = 0 & r.infected_N = 0 : {
 		r.infected_A := 1;
+		absorb_signal(M13_A, get_signal(M13_A));
 	}
 	
 	get_signal (M13_N) > 0.5 & r.infected_N = 0 & r.infected_N = 0 :{
 		r.infected_N := 1;
-	}
-	
-	r.infected_A = 1 | r.infected_N = 0 : {
-		r.prob_die := rand(1); //probability of dying --> Toxin strength
-		emit_signal(M13_A, M13_Concentration);
-	}
-	
-	r.infected_A = 0 | r.infected_N = 1 : {
-		r.prob_die := rand(1); //probability of dying --> Toxin strength
-		emit_signal(M13_N, M13_Concentration);
+		absorb_signal(M13_N, get_signal(M13_N));
 	}
 	
 	r.infected_A = 0 & r.infected_N = 0 : {
-		r.prob_die := rand(1); //probability of dying --> Toxin strength
+		r.prob_die := killing_rate; //probability of dying --> Toxin strength
+	}	
+	
+	r.infected_A = 1 & r.infected_N = 0 : {
+		r.prob_die := killing_rate; //probability of dying --> Toxin strength
+		emit_signal(M13_A, M13_Concentration);
+	}
+	
+	r.infected_A = 0 & r.infected_N = 1 : {
+		r.prob_die := 0; //probability of dying --> Toxin strength
+		emit_signal(M13_N, M13_Concentration);
 	}
 	
 	rate (r.prob_die) :{
@@ -106,24 +120,26 @@ program Bt() := {
 	
 	get_signal (M13_A) > 0.5 & r.infected_A = 0 & r.infected_N = 0 : {
 		r.infected_A := 1;
+		absorb_signal(M13_A, get_signal(M13_A));
 	}
 	
 	get_signal (M13_N) > 0.5 & r.infected_N = 0 & r.infected_N = 0 :{
 		r.infected_N := 1;
+		absorb_signal(M13_N, get_signal(M13_N));		
 	}
 	
 	r.infected_A = 0 & r.infected_N = 1 : {
-		r.prob_die := rand(1); //probability of dying --> Toxin strength
+		r.prob_die := killing_rate; //probability of dying --> Toxin strength
 		emit_signal(M13_N, M13_Concentration);
 	}
 	
 	r.infected_A = 1 & r.infected_N = 0 : {
-		r.prob_die :=0 ;
+		r.prob_die :=0;
 		emit_signal(M13_A, M13_Concentration);
 	}
 	
 	r.infected_A = 0 & r.infected_N = 0 : {
-		r.prob_die := rand(1); //probability of dying --> Toxin strength
+		r.prob_die := killing_rate; //probability of dying --> Toxin strength
 	}
 	
 	rate (r.prob_die) :{
@@ -140,14 +156,16 @@ program By() := {
 	
 	get_signal (M13_A) > 0.5 & r.infected_A = 0 & r.infected_N = 0 : {
 		r.infected_A := 1;
+		absorb_signal(M13_A, get_signal(M13_A));
 	}
 	
 	get_signal (M13_N) > 0.5 & r.infected_N = 0 & r.infected_A = 0 :{
 		r.infected_N := 1;
+		absorb_signal(M13_N, get_signal(M13_N));
 	}
 	
 	r.infected_A = 0 & r.infected_N = 1 : {
-		r.prob_die := 0;
+		r.prob_die := killing_rate;
 		emit_signal(M13_N, M13_Concentration);
 	}
 	
@@ -160,10 +178,13 @@ program By() := {
 		r.prob_die := 0;
 	}
 	
+	rate (r.prob_die) :{
+		die();
+	}
 };
 
 program main() := {
-	input_time := 50;
+	input_time := 80;
 	input_counter := 0;
 	mode := 0;
 	
@@ -171,25 +192,29 @@ program main() := {
 		input_counter := input_counter + dt;
 	};
 	
-	//Initialize each type of bacteria
-	foreach i in range 25 do{
-		ecoli ( [x := rand(200)-100, y := rand(200)-100], program Bn());
-		ecoli ( [x := rand(200)-100, y := rand(200)-100], program Bt());
-		ecoli ( [x := rand(200)-100, y := rand(200)-100], program By());
-		ecoli ( [x := rand(200)-100, y := rand(200)-100], program Bc())
-	} end;
-	
 	//When time reaches a given time, initialize signals
 	input_counter > input_time & mode = 0 : {
 		foreach i in range 50 do{
-			set_signal(M13_A , rand(200)-100 , rand(200)-100 , 20);
-			set_signal(M13_N , rand(200)-100 , rand(200)-100 , 20);
+			set_signal(M13_A , rand(200)-100 , rand(800)-400 , 10);
 		} end;
+		foreach i in range 50 do{
+			set_signal(M13_N , rand(200)-100 , rand(800)-400 , 10);
+		};
 		input_counter:=0;
 		mode:=1;
 	}
 };
 
-
-
-
+//Initialize each type of bacteria
+foreach i in range 100 do{
+	ecoli ( [x := rand(400)-200, y := rand(400)-200], program Bn());	
+} end;
+foreach i in range 25 do{
+	ecoli ( [x := rand(400)-200, y := rand(400)-200], program Bt());
+};
+foreach i in range 25 do{
+	ecoli ( [x := rand(400)-200, y := rand(400)-200], program By());
+};
+foreach i in range 25 do{
+	ecoli ( [x := rand(400)-200, y := rand(400)-200], program Bc());
+};
