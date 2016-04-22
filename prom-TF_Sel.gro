@@ -1,0 +1,251 @@
+///////////////////////////////////////////////////////////////
+//Selection of orthogonal pairs of triggerRNA-switch
+//trigger1 =>  sw1 <--> sw2  (trigger2 is not used)
+//
+// Ismael Rodríguez Palomo - LIA
+
+
+include gro
+
+set("dt", 0.1);
+set("population_max", 2000000);
+
+// Control variables
+t := 0;
+i := 0;
+n_run := 0;
+n_runs := 10;
+set ("nutrients", 0.0); //0.0: off, 1.0: on
+
+initialBacType:=100;
+initialInput:=100;
+totalBac:=initialBacType*4;
+repFract:=0.5;
+nP:=0;
+
+nCont := initialBacType;
+nYes := initialBacType;
+nNot := initialBacType;
+nTaut := initialBacType;
+nInput := 0;
+
+set ("num_plasmids",5);
+set ("num_proteins",5);
+set ("num_riboswitchs",0);
+
+offCounter := 0;
+offTime := 100;
+onCounter := 0;
+onTime := 600;
+totalTime := offTime + onTime;
+selMode := 0; //0-->OFF || 1-->ON
+printCounter := 0;
+printTime := 5;
+
+killing_rate:=0.0167;
+killing_rate:=0.5;
+proteins({"TFy", "Tox1", "AT1", "Tox2", "AT2"});
+plasmids({"pInput", "pCont", "pYes", "pNot", "pTaut"});
+
+// Protein degradation times and variabilities
+protein_degradation ([	proteins      := {"TFy", "Tox1", "AT1", "Tox2", "AT2"}, 
+						times         := {100,    60.0,   30.0,  60.0,   30.0},
+						variabilities := {100,    3.0,    3.0,   3.0,    3.0}]);
+
+// Operon definition
+genes([	name := "operonInput",
+		proteins := {"TFy","Tox1","AT2"},
+		promoter := [function := "YES", constitutive := true,
+		inductor_noise_probability := [output0input1 := 0.0, output1input0 := 0.0],
+		repressor_noise_probability := [output1input1 := 0.0, output0input0 := 0.0]],
+		prot_act_times := [times := {10.0, 10.0, 10.0}, variabilities := {2.0, 2.0, 2.0}]
+	]);
+
+genes([	name := "operonCont",
+		proteins := {"AT1","Tox2"},
+		promoter := [function := "YES", transcription_factors := {"TFy"}, constitutive := false,
+		inductor_noise_probability := [output0input1 := 1.0, output1input0 := 0.0]],
+		//repressor_noise_probability := [output1input1 := 0.0, output0input0 := 0.0]],
+		prot_act_times := [times := {10.0, 10.0}, variabilities := {2.0, 2.0}]
+	]);
+
+genes([	name := "operonYes",
+		proteins := {"AT1","Tox2"},
+		promoter := [function := "YES", transcription_factors := {"TFy"}, constitutive := false,
+		inductor_noise_probability := [output0input1 := 0.0, output1input0 := 0.0]],
+		//repressor_noise_probability := [output1input1 := 0.0, output0input0 := 0.0]],
+		prot_act_times := [times := {10.0, 10.0}, variabilities := {2.0, 2.0}]
+	]);
+
+genes([	name := "operonNot",
+		proteins := {"AT1","Tox2"},
+		promoter := [function := "YES", transcription_factors := {"TFy"}, constitutive := false,
+		inductor_noise_probability := [output0input1 := 1.0, output1input0 := 1.0]],
+		//repressor_noise_probability := [output1input1 := 0.0, output0input0 := 0.0]],
+		prot_act_times := [times := {10.0, 10.0}, variabilities := {2.0, 2.0}]
+	]);
+	
+genes([	name := "operonTaut",
+		proteins := {"AT1","Tox2"},
+		promoter := [function := "YES", transcription_factors := {"TFy"}, constitutive := false,
+		inductor_noise_probability := [output0input1 := 0.0, output1input0 := 1.0]],
+		//repressor_noise_probability := [output1input1 := 0.0, output0input0 := 0.0]],
+		prot_act_times := [times := {10.0, 10.0}, variabilities := {2.0, 2.0}]
+	]);
+
+plasmids_genes([ pCont := {"operonCont"},
+				 pYes  := {"operonYes"},
+				 pNot  := {"operonNot"},
+				 pTaut := {"operonTaut"},
+				 pInput:= {"operonInput"}
+			]);
+
+
+
+program Cont() :={
+	r := [prob_die:=0];
+	cfp := 0;
+	has_protein(2) & !has_protein(3):{
+		r.prob_die := killing_rate;
+	};
+	has_protein(4) & !has_protein(5):{
+		r.prob_die := killing_rate;
+	};
+	rate(r.prob_die):{
+		die();
+	};
+	true :{
+		cfp := 1000;
+	};
+	just_divided :{
+		nCont := nCont + 1;
+	}
+};
+
+program Yes() :={
+	r := [prob_die:=0];
+	gfp := 0;
+	has_protein(2) & !has_protein(3):{
+		r.prob_die := killing_rate;
+	};
+	has_protein(4) & !has_protein(5):{
+		r.prob_die := killing_rate;
+	};
+	rate(r.prob_die):{
+		die();
+	};
+	true :{
+		gfp := 1000;
+	};
+	just_divided :{
+		nYes := nYes + 1;
+	}
+};
+
+program Not() :={
+	r := [prob_die:=0];
+	yfp := 0;
+	has_protein(2) & !has_protein(3):{
+		r.prob_die := killing_rate;
+	};
+	has_protein(4) & !has_protein(5):{
+		r.prob_die := killing_rate;
+	};
+	rate(r.prob_die):{
+		die();
+	};
+	true :{
+		yfp := 1000;
+	};
+	just_divided :{
+		nNot := nNot + 1;
+	}
+};
+
+program Taut() :={
+	r := [prob_die:=0];
+	rfp := 0;
+	has_protein(2) & !has_protein(3):{
+		r.prob_die := killing_rate;
+	};
+	has_protein(4) & !has_protein(5):{
+		r.prob_die := killing_rate;
+	};
+	rate(r.prob_die):{
+		die();
+	};
+	true :{
+		rfp := 1000;
+	};
+	just_divided :{
+		nTaut := nTaut + 1;
+	}
+};
+
+program Input() :={
+	just_divided :{
+		nInput := nInput + 1;
+	}
+};
+
+program main() :={
+	
+	true:{
+		t := t + dt;
+		printCounter := printCounter + dt;
+		totalBac := nCont + nYes + nNot + nTaut;
+	};
+	
+	printCounter >= printTime :{
+		printCounter := 0;
+		//Print to file and screen
+	};
+	
+	selMode = 0 :{
+		offCounter := offCounter + dt;
+	};
+	selMode = 1 :{
+		onCounter := onCounter + dt;
+	};
+	
+	t > totalTime & n_run >= n_runs:{
+		stop();
+	};
+	
+	offCounter >= offTime:{
+		selMode := 1; //Switch to ON selection
+		//replate(repFract); //Replate a sample from offSelection
+		//c_ecolis(totalBac*repFract, -50, -70, 100, {"pP", "pHe"}, {"tetR"}, {}, program P()); //P donor bacteria in 1:1 prop
+		c_ecolis(initialInput, -50, -70, 100, {"pInput"}, {"TFy"}, {}, program Input()); //P donor bacteria in 1:1 prop
+		nInput := initialInput;
+		offCounter := 0;
+	};
+	
+	t > totalTime & n_run < n_runs:{
+		reset();
+		reset_actions();
+		t := 0;
+		i := 0;
+		n_run := n_run + 1;
+		set ( "dt", 0.1 );
+		set ( "population_max", 2000000 );
+		set ( "nutrients", 0.0);
+		nInput := 0;
+		nCont := initialBacType; nYes  := initialBacType;
+		nNot  := initialBacType; nTaut := initialBacType;
+		totalBac:=0;
+		offCounter := 0;
+		onCounter := 0;
+		selMode := 0; //0-->OFF || 1-->ON
+		printCounter := 0;
+		printTime := 5;
+		c_ecolis(initialBacType, -50, -70, 100, {"pCont"}, {}, {}, program Cont());// Cont bacteria
+		c_ecolis(initialBacType, -50, -70, 100, {"pYes"},  {}, {}, program Yes()); // Yes bacteria
+		c_ecolis(initialBacType, -50, -70, 100, {"pNot"},  {}, {}, program Not()); // Not bacteria
+		c_ecolis(initialBacType, -50, -70, 100, {"pTaut"}, {}, {}, program Taut());// Taut bacteria
+	};
+	c_ecolis(initialBacType, -50, -70, 200, {"pCont"}, {}, {}, program Cont());// Cont bacteria
+	c_ecolis(initialBacType, -50, -70, 200, {"pYes"},  {}, {}, program Yes()); // Yes bacteria
+	c_ecolis(initialBacType, -50, -70, 200, {"pNot"},  {}, {}, program Not()); // Not bacteria
+	c_ecolis(initialBacType, -50, -70, 200, {"pTaut"}, {}, {}, program Taut());// Taut bacteria
+};

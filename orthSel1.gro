@@ -44,7 +44,7 @@ set ("num_proteins",7);
 set ("num_riboswitchs",4);
 
 offCounter := 0;
-offTime := 240;
+offTime := 100;
 onCounter := 0;
 onTime := 600;
 totalTime := offTime + onTime;
@@ -213,20 +213,12 @@ RNAs_riboswitches ([T1 := {"switch1Yes1","switch2Yes1"}]); //HERE'S THE PROBLEM!
 
 //ACTIONS
 
-//action({"tetR"},"conjugate",{"1","1.0"}); Plasmid nr. conjugation rate
-//action({"T1"},"conjugate",{"1","1.0"})
-//action({"Tox1","-AT1"},"die",{"0.0167"});
-//action({"Tox2","-AT2"},"die",{"0.0167"});
-//action({"Tox3"},"die",{"0.0167"});
-//action({"Tox1","AT1"},"die",{0.0});
-//action({"Tox2","AT2"},"die",{0.0});
+action({"tetR"},"conjugate",{"1","1.0"}); //Plasmid nr. conjugation rate
+action({"T1"},"conjugate",{"1","1.0"});
+action({"Tox1","-AT1"},"die",{"0.0167"});
+action({"Tox2","-AT2"},"die",{"0.0167"});
+action({"Tox3"},"die",{"0.0167"});
 
-//action({"gfp"},"paint",{"500","0","0","0"}); Express “colour” with a fixed saturation. 
-//action({"-gfp"},"d_paint",{"-1","0","0","0"}); Express “colour” gradually. Code: {G,R,Y,B}
-//action({"-ara","tetR"},"lose_plasmid",{"1"}); Plasmid nr.
-//action({"gfp"},"set_growth_rate",{"0.011"}); ln(2)/gt(min)[ft/min]
-//action({"-tetR","-ara"},"emit_cf",{tostring(cf1)}); Cross-feeding emission tag
-//action({"tetR"},"get_cf",{tostring(cf1),"1"}); Cross-feeding reception tag/1. good, 2. toxin 
 
 
 //PROGRAMS//
@@ -347,12 +339,13 @@ program main() :={
 		stop();
 	};
 	
-	t >= offTime:{
+	offCounter >= offTime:{
 		selMode := 1; //Switch to ON selection
 		//replate(repFract); //Replate a sample from offSelection
 		//c_ecolis(totalBac*repFract, -50, -70, 100, {"pP", "pHe"}, {"tetR"}, {}, program P()); //P donor bacteria in 1:1 prop
 		c_ecolis(50, -50, -70, 100, {"pP", "pHe"}, {"tetR"}, {}, program P()); //P donor bacteria in 1:1 prop
 		nP := 50;
+		offCounter := 0;
 	};
 	
 	t > totalTime & n_run < n_runs:{
